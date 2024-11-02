@@ -87,6 +87,7 @@ def main():
     plt.xlabel = 'tStamp'
     plt.ylabel = 'P4 data'
     plt.grid()
+    plt.savefig('OUTPUT//P4.png')
     plt.show()
 
     plt.plot(tStamp,ds_P3)
@@ -94,6 +95,7 @@ def main():
     plt.xlabel = 'tStamp'
     plt.ylabel = 'P3 data'
     plt.grid()
+    plt.savefig('OUTPUT//P3.png')
     plt.show()
 
     plt.plot(tStamp,ds_Pz)
@@ -101,6 +103,7 @@ def main():
     plt.xlabel = 'tStamp'
     plt.ylabel = 'Pz data'
     plt.grid()
+    plt.savefig('OUTPUT//Pz.png')
     plt.show()
 #
 
