@@ -36,10 +36,10 @@ from copy import deepcopy as dpcpy
 import pickle as pckl
 from matplotlib import pyplot as plt
 import scipy
-
+import numpy  as np
 '''
 import mne
-import numpy  as np 
+ 
 import os
 import pandas as pd
 import seaborn as sns
@@ -167,6 +167,36 @@ def main():
     plt.savefig('OUTPUT//Pzwithfilters.png')
     plt.show()
 
+    #Apply re-referencing
+    original_P4_signal = filtered_data_P4
+    original_P3_signal = filtered_data_P3
+    original_Pz_signal = filtered_data_Pz
+
+    P4_signal_avg = np.mean(original_P4_signal, axis=None)
+    P3_signal_avg = np.mean(original_P3_signal, axis=None)
+    Pz_signal_avg = np.mean(original_Pz_signal, axis=None)
+
+    P4_data_referenced = original_P4_signal - P4_signal_avg
+    P3_data_referenced = original_P3_signal - P3_signal_avg
+    Pz_data_referenced = original_Pz_signal - Pz_signal_avg
+ 
+    plt.figure(figsize=(12, 6))
+
+    plt.subplot(2, 1, 1)
+    plt.plot(original_P4_signal, label='P4 (original)', alpha=0.7)
+    plt.plot(original_P3_signal, label='P3 (original)', alpha=0.7)
+    plt.plot(original_Pz_signal, label='Pz (original)', alpha=0.7)
+    plt.title('Original EEG Signals')
+    plt.legend()
+    plt.subplot(2, 1, 2)
+    plt.plot(P4_data_referenced, label='P4 (re-referenced)', alpha=0.7)
+    plt.plot(P3_data_referenced, label='P3 (re-referenced)', alpha=0.7)
+    plt.plot(Pz_data_referenced, label='Pz (re-referenced)', alpha=0.7)
+    plt.title('Re-referenced EEG Signals')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
 #
 
 #%% MAIN CODE                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
