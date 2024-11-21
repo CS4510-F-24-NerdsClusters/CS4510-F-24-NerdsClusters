@@ -37,6 +37,9 @@ import pickle as pckl
 from matplotlib import pyplot as plt
 import scipy
 import numpy as np
+from scipy.stats import skew
+from scipy.stats import kurtosis
+import pandas as pd
 
 '''
 import mne
@@ -45,16 +48,6 @@ import pandas as pd
 import seaborn as sns
 '''
 #%% USER INTERFACE              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-subjects = ['sb1','sb2']
-sessions = ['se1','se2']
-pathSoIRoot = 'INPUT\\DataSmall\\'
-for subject in subjects:
-    for session in sessions:
-        pathSoi = f'{pathSoIRoot}{subject}\\{session}\\'
-        with os.scandir(pathSoi) as files:
-            for file in files:
-                print(file.name)
-
 soi_file = '1_132_bk_pic.pckl'
 
 #Load SoI object
@@ -80,15 +73,15 @@ with open("INPUT\\1_132_bk_pic.pckl", 'rb') as fp:
 
 #Function definitions Start Here
 def main():
-    return
-    # print(soi['info']['eeg_info']['channels'][7]['label'])
-    # print(soi['info']['eeg_info']['channels'][6]['label'])
-    # print(soi['info']['eeg_info']['channels'][18]['label'])
-    # ds_P4 = soi['series'][7]
-    # ds_P3 = soi['series'][6]
-    # ds_Pz = soi['series'][18]
-    # tStamp = soi['tStamp']
-    # sfreq = soi['info']['eeg_info']['effective_srate']
+    
+    print(soi['info']['eeg_info']['channels'][7]['label'])
+    print(soi['info']['eeg_info']['channels'][6]['label'])
+    print(soi['info']['eeg_info']['channels'][18]['label'])
+    ds_P4 = soi['series'][7]
+    ds_P3 = soi['series'][6]
+    ds_Pz = soi['series'][18]
+    tStamp = soi['tStamp']
+    sfreq = soi['info']['eeg_info']['effective_srate']
 
     # plt.plot(tStamp,ds_P4)
     # plt.title(soi['info']['eeg_info']['channels'][7]['label'])
@@ -114,39 +107,31 @@ def main():
     # plt.savefig('OUTPUT//Pz.png')
     # plt.show()
 
-    # def filter(data, num, sampling_freq): #bandstop filter (notch and impedance)
-    #     low = (num - 1)/(sampling_freq/2)
-    #     high = (num + 1)/(sampling_freq/2)
-    #     b,a = scipy.signal.butter(N = 2, Wn = [low,high], btype = 'bandstop')
-    #     return scipy.signal.filtfilt(b,a,data)
-    # #
-    # def bandpass_filter(data, low_freq, high_freq, sampling_freq):
-    #     low = low_freq/(sampling_freq/2)
-    #     high = high_freq/(sampling_freq/2)
-    #     b, a = scipy.signal.butter(N = 4, Wn = [low,high], btype = 'bandpass')
-    #     return scipy.signal.filtfilt(b, a, data)
-    # #
+    def filter(data, num, sampling_freq): #bandstop filter (notch and impedance)
+        low = (num - 1)/(sampling_freq/2)
+        high = (num + 1)/(sampling_freq/2)
+        b,a = scipy.signal.butter(N = 2, Wn = [low,high], btype = 'bandstop')
+        return scipy.signal.filtfilt(b,a,data)
+    #
+    def bandpass_filter(data, low_freq, high_freq, sampling_freq):
+        low = low_freq/(sampling_freq/2)
+        high = high_freq/(sampling_freq/2)
+        b, a = scipy.signal.butter(N = 4, Wn = [low,high], btype = 'bandpass')
+        return scipy.signal.filtfilt(b, a, data)
+    #
+    def run_filters(data):
+        filtered_data = filter(data, 60, sfreq)
+        filtered_data = filter(filtered_data, 120, sfreq)
+        filtered_data = filter(filtered_data, 180, sfreq)
+        filtered_data = filter(filtered_data, 240, sfreq)
+        filtered_data = filter(filtered_data, 125, sfreq)
+        filtered_data = bandpass_filter(filtered_data, .5, 32, sfreq)
+        return filtered_data
 
-    # filtered_data_P4 = filter(ds_P4, 60, sfreq)
-    # filtered_data_P4 = filter(filtered_data_P4, 120, sfreq)
-    # filtered_data_P4 = filter(filtered_data_P4, 180, sfreq)
-    # filtered_data_P4 = filter(filtered_data_P4, 240, sfreq)
-    # filtered_data_P4 = filter(filtered_data_P4, 125, sfreq)
-    # filtered_data_P4 = bandpass_filter(filtered_data_P4, .5, 32, sfreq)
+    filtered_data_P4 = run_filters(ds_P4)
+    filtered_data_P3 = run_filters(ds_P3)
+    filtered_data_Pz = run_filters(ds_Pz)
 
-    # filtered_data_P3 = filter(ds_P3, 60, sfreq)
-    # filtered_data_P3 = filter(filtered_data_P3, 120, sfreq)
-    # filtered_data_P3 = filter(filtered_data_P3, 180, sfreq)
-    # filtered_data_P3 = filter(filtered_data_P3, 240, sfreq)
-    # filtered_data_P3 = filter(filtered_data_P3, 125, sfreq)
-    # filtered_data_P3 = bandpass_filter(filtered_data_P3, .5, 32, sfreq)
-
-    # filtered_data_Pz = filter(ds_Pz, 60, sfreq)
-    # filtered_data_Pz = filter(filtered_data_Pz, 120, sfreq)
-    # filtered_data_Pz = filter(filtered_data_Pz, 180, sfreq)
-    # filtered_data_Pz = filter(filtered_data_Pz, 240, sfreq)
-    # filtered_data_Pz = filter(filtered_data_Pz, 125, sfreq)
-    # filtered_data_Pz = bandpass_filter(filtered_data_Pz, .5, 32, sfreq)
 
     # plt.plot(tStamp,ds_P4)
     # plt.plot(tStamp,filtered_data_P4)
@@ -205,6 +190,65 @@ def main():
 
     # plt.tight_layout()
     # plt.show()
+
+    subjects = ['sb1','sb2']
+    sessions = ['se1','se2']
+    pathSoIRoot = 'INPUT\\DataSmall\\'
+    dataSe1 = []
+    dataSe2 = []
+    window_size = 100
+    for subject in subjects:
+        for session in sessions:
+            pathSoi = f'{pathSoIRoot}{subject}\\{session}\\'
+            with os.scandir(pathSoi) as files:
+                for file in files:
+                    means = []
+                    stds = []
+                    with open(file,'rb') as fp:
+                        sbfile = pckl.load(fp)
+                    p4data = run_filters(sbfile['series'][7])
+                    p3data = run_filters(sbfile['series'][6])
+                    pzdata = run_filters(sbfile['series'][18])
+
+                    for start in range(0, len(p4data) - window_size + 1):
+                        data_section = p4data[start:start + window_size]
+                        mean = np.mean(data_section)
+                        std = np.std(data_section)
+                        means.append(mean)
+                        stds.append(std)
+
+                    for start in range(0, len(p3data) - window_size + 1):
+                        data_section = p3data[start:start + window_size]
+                        mean = np.mean(data_section)
+                        std = np.std(data_section)
+                        means.append(mean)
+                        stds.append(std)
+
+                    for start in range(0, len(pzdata) - window_size + 1):
+                        data_section = pzdata[start:start + window_size]
+                        mean = np.mean(data_section)
+                        std = np.std(data_section)
+                        means.append(mean)
+                        stds.append(std)
+                
+                    f1 = np.mean(means)
+                    f2 = np.std(means)
+                    f3 = skew(means)
+                    f4 = kurtosis(means)
+                    f5 = np.mean(stds)
+                    f6 = np.std(stds)
+                    f7 = skew(stds)
+                    f8 = kurtosis(stds)
+                    if session == 'se1':
+                        dataSe1.append([subject, session, f1, f2, f3, f4, f5, f6, f7, f8])
+                    else:
+                        dataSe2.append([subject, session, f1, f2, f3, f4, f5, f6, f7, f8])
+
+    df1 = pd.DataFrame(dataSe1, columns = ['subject', 'session', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8'])
+    df2 = pd.DataFrame(dataSe2, columns = ['subject', 'session', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8'])
+
+    df1.to_csv('OUTPUT\\TrainValidateData.csv')
+    df2.to_csv('OUTPUT\\TestData.csv')
 #
 
 #%% MAIN CODE                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
