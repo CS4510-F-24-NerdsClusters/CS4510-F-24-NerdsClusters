@@ -40,6 +40,9 @@ import numpy as np
 from scipy.stats import skew
 from scipy.stats import kurtosis
 import pandas as pd
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 
 '''
 import mne
@@ -83,29 +86,29 @@ def main():
     tStamp = soi['tStamp']
     sfreq = soi['info']['eeg_info']['effective_srate']
 
-    # plt.plot(tStamp,ds_P4)
-    # plt.title(soi['info']['eeg_info']['channels'][7]['label'])
-    # plt.xlabel('tStamp')
-    # plt.ylabel('P4 data')
-    # plt.grid()
-    # plt.savefig('OUTPUT//P4.png')
-    # plt.show()
+    plt.plot(tStamp,ds_P4)
+    plt.title(soi['info']['eeg_info']['channels'][7]['label'])
+    plt.xlabel('tStamp')
+    plt.ylabel('P4 data')
+    plt.grid()
+    plt.savefig('OUTPUT//P4.png')
+    plt.show()
 
-    # plt.plot(tStamp,ds_P3)
-    # plt.title(soi['info']['eeg_info']['channels'][6]['label'])
-    # plt.xlabel('tStamp')
-    # plt.ylabel('P3 data')
-    # plt.grid()
-    # plt.savefig('OUTPUT//P3.png')
-    # plt.show()
+    plt.plot(tStamp,ds_P3)
+    plt.title(soi['info']['eeg_info']['channels'][6]['label'])
+    plt.xlabel('tStamp')
+    plt.ylabel('P3 data')
+    plt.grid()
+    plt.savefig('OUTPUT//P3.png')
+    plt.show()
 
-    # plt.plot(tStamp,ds_Pz)
-    # plt.title(soi['info']['eeg_info']['channels'][18]['label'])
-    # plt.xlabel('tStamp')
-    # plt.ylabel('Pz data')
-    # plt.grid()
-    # plt.savefig('OUTPUT//Pz.png')
-    # plt.show()
+    plt.plot(tStamp,ds_Pz)
+    plt.title(soi['info']['eeg_info']['channels'][18]['label'])
+    plt.xlabel('tStamp')
+    plt.ylabel('Pz data')
+    plt.grid()
+    plt.savefig('OUTPUT//Pz.png')
+    plt.show()
 
     def filter(data, num, sampling_freq): #bandstop filter (notch and impedance)
         low = (num - 1)/(sampling_freq/2)
@@ -127,6 +130,11 @@ def main():
         filtered_data = filter(filtered_data, 125, sfreq)
         filtered_data = bandpass_filter(filtered_data, .5, 32, sfreq)
         return filtered_data
+    #
+    def rereference(data):
+        signal_avg = np.mean(data, axis = None)
+        rereferenced_data = data - signal_avg
+        return rereferenced_data
 
     filtered_data_P4 = run_filters(ds_P4)
     filtered_data_P3 = run_filters(ds_P3)
@@ -159,36 +167,28 @@ def main():
     plt.savefig('OUTPUT//Pzwithfilters.png')
     plt.show()
 
-    # #Apply re-referencing
-    # original_P4_signal = filtered_data_P4
-    # original_P3_signal = filtered_data_P3
-    # original_Pz_signal = filtered_data_Pz
-
-    # P4_signal_avg = np.mean(original_P4_signal, axis=None)
-    # P3_signal_avg = np.mean(original_P3_signal, axis=None)
-    # Pz_signal_avg = np.mean(original_Pz_signal, axis=None)
-
-    # P4_data_referenced = original_P4_signal - P4_signal_avg
-    # P3_data_referenced = original_P3_signal - P3_signal_avg
-    # Pz_data_referenced = original_Pz_signal - Pz_signal_avg
+    #Apply re-referencing
+    P4_data_rereferenced = rereference(filtered_data_P4)
+    P3_data_rereferenced = rereference(filtered_data_P3)
+    Pz_data_rereferenced = rereference(filtered_data_Pz)
  
-    # plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(12, 6))
 
-    # plt.subplot(2, 1, 1)
-    # plt.plot(original_P4_signal, label='P4 (original)', alpha=0.7)
-    # plt.plot(original_P3_signal, label='P3 (original)', alpha=0.7)
-    # plt.plot(original_Pz_signal, label='Pz (original)', alpha=0.7)
-    # plt.title('Original EEG Signals')
-    # plt.legend()
-    # plt.subplot(2, 1, 2)
-    # plt.plot(P4_data_referenced, label='P4 (re-referenced)', alpha=0.7)
-    # plt.plot(P3_data_referenced, label='P3 (re-referenced)', alpha=0.7)
-    # plt.plot(Pz_data_referenced, label='Pz (re-referenced)', alpha=0.7)
-    # plt.title('Re-referenced EEG Signals')
-    # plt.legend()
+    plt.subplot(2, 1, 1)
+    plt.plot(filtered_data_P4, label='P4 (original)', alpha=0.7)
+    plt.plot(filtered_data_P3, label='P3 (original)', alpha=0.7)
+    plt.plot(filtered_data_Pz, label='Pz (original)', alpha=0.7)
+    plt.title('Original EEG Signals')
+    plt.legend()
+    plt.subplot(2, 1, 2)
+    plt.plot(P4_data_rereferenced, label='P4 (re-referenced)', alpha=0.7)
+    plt.plot(P3_data_rereferenced, label='P3 (re-referenced)', alpha=0.7)
+    plt.plot(Pz_data_rereferenced, label='Pz (re-referenced)', alpha=0.7)
+    plt.title('Re-referenced EEG Signals')
+    plt.legend()
 
-    # plt.tight_layout()
-    # plt.show()
+    plt.tight_layout()
+    plt.show()
 
     subjects = ['sb1','sb2']
     sessions = ['se1','se2']
@@ -248,6 +248,37 @@ def main():
 
     df1.to_csv('OUTPUT\\TrainValidateData.csv')
     df2.to_csv('OUTPUT\\TestData.csv')
+
+    #features only
+    df1_features = df1.iloc[:, 2:]
+
+    pca = PCA(n_components = 2)
+    df1PCA = pd.DataFrame(pca.fit_transform(df1_features), columns=['PC1','PC2'])
+
+    #KMeans
+    kmeans = KMeans(n_clusters=2, random_state=0)
+    kmeans.fit(df1PCA)
+    df1['KMeansCluster'] = kmeans.labels_
+
+    plt.scatter(df1PCA['PC1'], df1PCA['PC2'], c=df1['KMeansCluster'], cmap='viridis', alpha=0.7)
+    plt.colorbar(label='Cluster')
+    plt.xlabel('Principal Component 1')
+    plt.ylabel('Principal Component 2')
+    plt.title('KMeans Clustering Results')
+    plt.savefig('OUTPUT//KmeansCluster.png')
+    plt.show()
+
+    #hierarchical
+    linkage_matrix = linkage(df1_features, method = 'ward')
+    cluster_labels = fcluster(linkage_matrix, t=10, criterion = 'distance')
+    df1['HierarchicalCluster'] = cluster_labels
+    plt.scatter(df1PCA['PC1'], df1PCA['PC2'], c=df1['HierarchicalCluster'], cmap='viridis', alpha=0.7)
+    plt.colorbar(label='Cluster')
+    plt.xlabel('Principal Component 1')
+    plt.ylabel('Principal Component 2')
+    plt.title('Hierarchical Clustering Results')
+    plt.savefig('OUTPUT//HierarchicalCluster.png')
+    plt.show()
 #
 
 #%% MAIN CODE                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
